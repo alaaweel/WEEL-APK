@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Get the Weel Driver App</title>
+<style>
+  :root{
+    --navy:#0B1F3B; --green:#00bf63; --white:#F8FAFC; --muted:#9fb0c3; --border:#22344f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 600px at 50% -10%, #14294a 0%, var(--navy) 60%);
+    color:var(--white); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px; text-align:center;
+  }
+  .card{max-width:420px;width:100%}
+  .logo{font-size:34px;font-weight:800;letter-spacing:.5px;margin:0 0 4px}
+  .logo span{color:var(--green)}
+  .sub{color:var(--muted);margin:0 0 28px;font-size:15px}
+  .status{min-height:22px;color:var(--muted);font-size:14px;margin-bottom:18px}
+  .btn{
+    display:block;width:100%;padding:16px 18px;margin:10px 0;border-radius:14px;
+    font-size:16px;font-weight:700;text-decoration:none;border:1px solid var(--border);
+    transition:transform .05s ease, filter .15s ease;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn--primary{background:var(--green);color:#04231a;border-color:transparent}
+  .btn--ghost{background:transparent;color:var(--white)}
+  .btn small{display:block;font-weight:500;font-size:12px;opacity:.8;margin-top:2px}
+  .hint{color:var(--muted);font-size:12px;line-height:1.5;margin-top:22px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--muted);
+    border-top-color:var(--green);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1 class="logo">WE<span>E</span>L</h1>
+    <p class="sub">Driver App</p>
+
+    <div class="status" id="status"><span class="spin"></span>Detecting your device…</div>
+
+    <div id="buttons" style="display:none">
+      <a class="btn btn--primary" id="androidBtn" href="#">Download for Android<small>APK · install from this file</small></a>
+      <a class="btn btn--ghost" id="iosBtn" href="https://testflight.apple.com/join/GPsr6Fe8">Get for iPhone<small>TestFlight</small></a>
+    </div>
+
+    <p class="hint">
+      <b>Android:</b> after the download, tap the file and allow install from this source if prompted.<br>
+      <b>iPhone:</b> install Apple's TestFlight app first, then open the link.
+    </p>
+  </div>
+
+<script>
+  // ---- Config ---------------------------------------------------------------
+  var REPO = "alaaweel/WEEL-APK";
+  var RELEASE_TAG = "drivers";                 // the release that holds the APK
+  var IOS_URL = "https://testflight.apple.com/join/GPsr6Fe8";
+  // Fallback used only if the GitHub API can't be reached:
+  var APK_FALLBACK = "https://github.com/alaaweel/WEEL-APK/releases/download/drivers/build-1786348803542.apk";
+  // ---------------------------------------------------------------------------
+
+  var ua = navigator.userAgent || navigator.vendor || "";
+  var isAndroid = /android/i.test(ua);
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/(Mac)/i.test(ua) && "ontouchend" in document);
+
+  var statusEl = document.getElementById("status");
+  var buttonsEl = document.getElementById("buttons");
+  var androidBtn = document.getElementById("androidBtn");
+  var iosBtn = document.getElementById("iosBtn");
+  iosBtn.href = IOS_URL;
+
+  function showButtons(msg){
+    statusEl.style.display = msg ? "block" : "none";
+    if (msg) statusEl.innerHTML = msg;
+    buttonsEl.style.display = "block";
+  }
+
+  // Resolve the newest .apk asset URL from the release, so the page never
+  // goes stale when a new build is uploaded to the same release/tag.
+  function resolveApkUrl(){
+    return fetch("https://api.github.com/repos/" + REPO + "/releases/tags/" + RELEASE_TAG,
+                 { headers: { "Accept": "application/vnd.github+json" } })
+      .then(function(r){ if(!r.ok) throw new Error("api"); return r.json(); })
+      .then(function(rel){
+        var apks = (rel.assets || []).filter(function(a){ return /\.apk$/i.test(a.name); });
+        if (!apks.length) throw new Error("noapk");
+        // newest first
+        apks.sort(function(a,b){ return new Date(b.updated_at) - new Date(a.updated_at); });
+        return apks[0].browser_download_url;
+      })
+      .catch(function(){ return APK_FALLBACK; });
+  }
+
+  resolveApkUrl().then(function(apkUrl){
+    androidBtn.href = apkUrl;
+
+    if (isAndroid){
+      statusEl.innerHTML = "Starting your download…";
+      buttonsEl.style.display = "block";     // show as manual fallback too
+      window.location.href = apkUrl;         // auto-start APK download
+    } else if (isIOS){
+      statusEl.innerHTML = "Opening TestFlight…";
+      buttonsEl.style.display = "block";
+      window.location.href = IOS_URL;        // auto-open TestFlight
+    } else {
+      showButtons("Choose your platform:");  // desktop / unknown → let them pick
+    }
+  });
+</script>
+</body>
+</html>
